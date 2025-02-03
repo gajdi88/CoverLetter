@@ -2,10 +2,9 @@ import gradio as gr
 import PyPDF2
 
 
-# Abstract LLM integration function
 def call_llm(cv_text, job_description):
     prompt = f"CV: {cv_text}\nJob Description: {job_description}\nPlease write a cover letter."
-    # Replace this dummy response with an actual LLM API call.
+    # Replace with actual LLM API/integration.
     return "This is the generated cover letter based on your CV and job description."
 
 
@@ -22,7 +21,6 @@ def generate_cover_letter(cv_pdf, job_description, history, history_index):
         return "Please upload a CV PDF.", history, history_index
     cv_text = extract_text_from_pdf(cv_pdf.name)
     new_letter = call_llm(cv_text, job_description)
-    # If there are undone versions, discard them
     if history_index < len(history) - 1:
         history = history[:history_index + 1]
     history.append(new_letter)
@@ -41,19 +39,28 @@ def redo_letter(current, history, history_index):
         history_index += 1
     return history[history_index], history, history_index
 
+# Add CSS targeting the cover letter's textarea via its element ID.
+css = """
+#cover_letter textarea {
+    resize: both !important;
+}
+"""
 
-with gr.Blocks() as demo:
+with gr.Blocks(css=css) as demo:
     gr.Markdown("## Cover Letter Generator")
-    cv_pdf = gr.File(label="Upload CV PDF", file_types=[".pdf"])
-    job_description = gr.Textbox(label="Job Description", lines=10)
-    cover_letter = gr.Textbox(label="Cover Letter", lines=15)
-    history_state = gr.State([])  # List to store cover letter versions
-    history_index_state = gr.State(-1)  # Pointer to the current version
-
     with gr.Row():
-        generate_btn = gr.Button("Generate Cover Letter")
-        undo_btn = gr.Button("Undo")
-        redo_btn = gr.Button("Redo")
+        with gr.Column():
+            cv_pdf = gr.File(label="Upload CV PDF", file_types=[".pdf"])
+            job_description = gr.Textbox(label="Job Description", lines=10)
+            generate_btn = gr.Button("Generate Cover Letter")
+        with gr.Column():
+            with gr.Row():
+                undo_btn = gr.Button("Undo")
+                redo_btn = gr.Button("Redo")
+            cover_letter = gr.Textbox(label="Cover Letter", lines=25, elem_id="cover_letter")
+
+    history_state = gr.State([])
+    history_index_state = gr.State(-1)
 
     generate_btn.click(
         generate_cover_letter,
