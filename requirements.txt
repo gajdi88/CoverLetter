@@ -2,3 +2,5 @@ PyPDF2
 gradio
 requests
 python-dotenv
+pdfminer
+pdfminer.six

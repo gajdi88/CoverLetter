@@ -2,6 +2,7 @@
 
 import requests
 from dotenv import load_dotenv
+from pdfminer.high_level import extract_text
 
 import os
 import os
@@ -19,7 +20,10 @@ class CoverLetterGenerator:
         Extract text from CV file.
         Implement actual extraction logic here.
         """
-        return "sample cv text"
+        # Extract raw text from the PDF file
+        raw_text = extract_text(cv_path)
+
+        return raw_text
 
     def generate_cover_letter(self, cv_path, job_description):
         """
@@ -37,7 +41,16 @@ class CoverLetterGenerator:
             cv_text = self.extract_text(cv_path)
 
             # Create prompt for generating cover letter
-            prompt = f"Write a cover letter based on this CV: {cv_text} and the following job description: {job_description}"
+            prompt = f"""
+                Write a cover letter based on this CV:
+                --------
+                {cv_text}
+                ---------
+                and the following job description:
+                ---------
+                {job_description}
+            """
+            prompt="What is the capital of the USA?"
 
             # Append current prompt to conversation history
             self.conversation_history.append(prompt)
@@ -45,18 +58,19 @@ class CoverLetterGenerator:
             # Prepare messages for Ollama API request
             messages = [{"role": "user", "content": msg} for msg in self.conversation_history]
 
-            test_message = f'''
-            {
-              "model": "deepseek-r1:32b",
-              "prompt": "{prompt}",
-              "stream": false
-            }
-            '''
+            api_message = f"""
+                {{
+                  "model": "deepseek-r1:32b",
+                  "prompt": "{prompt}",
+                  "stream": false
+                }}
+                """
+
 
             # Send request to Ollama API
             response = requests.post(
                 'http://localhost:3000/ollama/api/generate',
-                data=test_message,
+                data=api_message,
                 headers=self.headers
             )
             response.raise_for_status()
