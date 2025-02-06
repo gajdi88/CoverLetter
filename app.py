@@ -1,81 +1,78 @@
 import gradio as gr
-import PyPDF2
+from services.cover_letter_generator import CoverLetterGenerator  # Ensure this import matches your setup
+
+# Initialize the Cover Letter Generator
+clg = CoverLetterGenerator()
 
 
-def call_llm(cv_text, job_description):
-    prompt = f"CV: {cv_text}\nJob Description: {job_description}\nPlease write a cover letter."
-    # Replace with actual LLM API/integration.
-    return "This is the generated cover letter based on your CV and job description."
+def generate_cover_letter(cv_file, job_description, history_state):
+    if cv_file is None:
+        return "Please upload a CV first.", history_state, len(history_state) - 1
+
+    try:
+        # Generate cover letter using the generator
+        cover_letter = clg.generate_cover_letter(cv_file.name, job_description)
+
+        new_history = history_state + [cover_letter]
+        new_index = len(new_history) - 1
+
+        return cover_letter, new_history, new_index
+    except Exception as e:
+        return f"Error: {str(e)}", history_state, len(history_state) - 1
 
 
-def extract_text_from_pdf(pdf_file):
-    reader = PyPDF2.PdfReader(pdf_file)
-    text = ""
-    for page in reader.pages:
-        text += page.extract_text()
-    return text
-
-
-def generate_cover_letter(cv_pdf, job_description, history, history_index):
-    if cv_pdf is None:
-        return "Please upload a CV PDF.", history, history_index
-    cv_text = extract_text_from_pdf(cv_pdf.name)
-    new_letter = call_llm(cv_text, job_description)
-    if history_index < len(history) - 1:
-        history = history[:history_index + 1]
-    history.append(new_letter)
-    history_index = len(history) - 1
-    return new_letter, history, history_index
-
-
-def undo_letter(current, history, history_index):
+def undo_action(current_cover_letter, history_state, history_index):
     if history_index > 0:
-        history_index -= 1
-    return history[history_index], history, history_index
+        new_index = history_index - 1
+        return history_state[new_index], history_state, new_index
+    else:
+        return current_cover_letter, history_state, history_index
 
 
-def redo_letter(current, history, history_index):
-    if history_index < len(history) - 1:
-        history_index += 1
-    return history[history_index], history, history_index
+def redo_action(current_cover_letter, history_state, history_index):
+    if history_index < len(history_state) - 1:
+        new_index = history_index + 1
+        return history_state[new_index], history_state, new_index
+    else:
+        return current_cover_letter, history_state, history_index
 
-# Add CSS targeting the cover letter's textarea via its element ID.
-css = """
-#cover_letter textarea {
-    resize: both !important;
-}
-"""
 
-with gr.Blocks(css=css) as demo:
-    gr.Markdown("## Cover Letter Generator")
+# Define the Gradio interface
+with gr.Blocks() as demo:
+    gr.Markdown("# Cover Letter Generator")
+
     with gr.Row():
-        with gr.Column():
-            cv_pdf = gr.File(label="Upload CV PDF", file_types=[".pdf"])
-            job_description = gr.Textbox(label="Job Description", lines=10)
-            generate_btn = gr.Button("Generate Cover Letter")
-        with gr.Column():
-            with gr.Row():
-                undo_btn = gr.Button("Undo")
-                redo_btn = gr.Button("Redo")
-            cover_letter = gr.Textbox(label="Cover Letter", lines=25, elem_id="cover_letter")
+        cv_input = gr.File(label="Upload your CV", file_types=[".docx", ".pdf"])
+        job_description_input = gr.Textbox(label="Job Description", placeholder="Enter the job description here.")
 
-    history_state = gr.State([])
-    history_index_state = gr.State(-1)
+    generate_button = gr.Button("Generate Cover Letter")
+    undo_button = gr.Button("Undo")
+    redo_button = gr.Button("Redo")
 
-    generate_btn.click(
-        generate_cover_letter,
-        inputs=[cv_pdf, job_description, history_state, history_index_state],
-        outputs=[cover_letter, history_state, history_index_state]
-    )
-    undo_btn.click(
-        undo_letter,
-        inputs=[cover_letter, history_state, history_index_state],
-        outputs=[cover_letter, history_state, history_index_state]
-    )
-    redo_btn.click(
-        redo_letter,
-        inputs=[cover_letter, history_state, history_index_state],
-        outputs=[cover_letter, history_state, history_index_state]
+    cover_letter_output = gr.Textbox(label="Generated Cover Letter", lines=25)
+
+    history_state = gr.State(value=[])
+    current_index = gr.State(value=-1)
+
+    # Event handlers
+    generate_button.click(
+        fn=generate_cover_letter,
+        inputs=[cv_input, job_description_input, history_state],
+        outputs=[cover_letter_output, history_state, current_index]
     )
 
-demo.launch()
+    undo_button.click(
+        fn=undo_action,
+        inputs=[cover_letter_output, history_state, current_index],
+        outputs=[cover_letter_output, history_state, current_index]
+    )
+
+    redo_button.click(
+        fn=redo_action,
+        inputs=[cover_letter_output, history_state, current_index],
+        outputs=[cover_letter_output, history_state, current_index]
+    )
+
+# Launch the Gradio interface
+if __name__ == "__main__":
+    demo.launch()
