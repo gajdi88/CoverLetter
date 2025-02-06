@@ -1,12 +1,18 @@
 # services/cover_letter_generator.py
 
 import requests
+from dotenv import load_dotenv
 
+import os
+import os
 
+load_dotenv()
 class CoverLetterGenerator:
     def __init__(self):
         self.conversation_history = []
-        self.headers = {"Authorization": "Bearer XXXXXXXTOKENXXXXXX"}
+        api_key = os.environ.get("API_KEY")
+        self.headers = {"Authorization": f"Bearer {api_key}"}
+        print(self.headers)
 
     def extract_text(self, cv_path):
         """
@@ -39,10 +45,10 @@ class CoverLetterGenerator:
             # Prepare messages for Ollama API request
             messages = [{"role": "user", "content": msg} for msg in self.conversation_history]
 
-            test_message = '''
+            test_message = f'''
             {
               "model": "deepseek-r1:32b",
-              "prompt": "What's the capital of Australia?",
+              "prompt": "{prompt}",
               "stream": false
             }
             '''
