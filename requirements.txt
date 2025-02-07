@@ -4,3 +4,4 @@ requests
 python-dotenv
 pdfminer
 pdfminer.six
+regex
