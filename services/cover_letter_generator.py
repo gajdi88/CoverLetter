@@ -4,9 +4,10 @@ import requests
 from dotenv import load_dotenv
 from pdfminer.high_level import extract_text
 import re
-
+import pdfplumber
 import os
 import os
+from docx import Document
 
 load_dotenv()
 
@@ -27,14 +28,15 @@ def clean_prompt(prompt: str) -> str:
         str: A cleaned version of the prompt.
     """
     # Replace newline characters with a space
-    prompt = prompt.replace('\n', ' ')
+    # prompt = prompt.replace('\n', ' ')
 
     # Remove any characters that are not allowed.
     # Allowed: letters, digits, whitespace, and basic punctuation (. , : ; ? ! ' " -)
-    cleaned = re.sub(r'[^A-Za-z0-9\s\.\,\:\;\?\!\-]', '', prompt)
+    cleaned = re.sub(r'[^A-Za-z0-9\s\.\,\:\;\?\'\!\-]', '', prompt)
 
     # Collapse multiple spaces into a single space and trim leading/trailing whitespace
-    cleaned = re.sub(r'\s+', ' ', cleaned).strip()
+    cleaned = re.sub(r'[ \t\r\f+]', ' ', cleaned).strip()
+    # cleaned = re.sub(r'\s+', ' ', cleaned).strip()
     return cleaned
 
 class CoverLetterGenerator:
@@ -50,7 +52,18 @@ class CoverLetterGenerator:
         Implement actual extraction logic here.
         """
         # Extract raw text from the PDF file
-        raw_text = extract_text(cv_path)
+        # raw_text = extract_text(cv_path)
+
+        # with pdfplumber.open(cv_path) as pdf:
+        #     raw_text = ''
+        #     for page in pdf.pages:
+        #         raw_text += page.extract_text()
+
+        doc = Document(cv_path)
+        raw_text = []
+        for para in doc.paragraphs:
+            raw_text.append(para.text)
+        return '\n'.join(raw_text)
 
         return raw_text
 
@@ -69,7 +82,7 @@ class CoverLetterGenerator:
         try:
             # Extract text from CV
             cv_text = self.extract_text(cv_path)
-            cv_text = "I had many jobs"
+
             # Create prompt for generating cover letter
             prompt = f"""
                 Write a cover letter based on this CV:
@@ -98,7 +111,7 @@ class CoverLetterGenerator:
                 }}
                 """
 
-
+            response = ""
             # Send request to Ollama API
             response = requests.post(
                 'http://localhost:3000/ollama/api/generate',
