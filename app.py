@@ -5,13 +5,13 @@ from services.cover_letter_generator import CoverLetterGenerator  # Ensure this 
 clg = CoverLetterGenerator()
 
 
-def generate_cover_letter(cv_file, job_description, history_state):
+def generate_cover_letter(cv_file, job_description, history_state, dropdown):
     if cv_file is None:
         return "Please upload a CV first.", history_state, len(history_state) - 1
 
     try:
         # Generate cover letter using the generator
-        cover_letter = clg.generate_cover_letter(cv_file.name, job_description)
+        cover_letter = clg.generate_cover_letter(cv_file.name, job_description, dropdown)
 
         new_history = history_state + [cover_letter]
         new_index = len(new_history) - 1

@@ -99,7 +99,7 @@ class CoverLetterGenerator:
 
         return generated_text
 
-    def generate_cover_letter(self, cv_path, job_description, dropdown):
+    def generate_cover_letter(self, cv_path, job_description, model_choice):
         """
         Generate cover letter using Ollama via OpenWebUI.
 
@@ -110,7 +110,7 @@ class CoverLetterGenerator:
         Returns:
             str: Generated cover letter text or error message if fails.
         """
-        model_choice = dropdown
+
         try:
 
             # Extract text from CV
