@@ -40,19 +40,21 @@ def redo_action(current_cover_letter, history_state, history_index):
 # Define the Gradio interface
 with gr.Blocks() as demo:
     gr.Markdown("# Cover Letter Generator")
-
     with gr.Row():
-        cv_input = gr.File(label="Upload your CV", file_types=[".docx", ".pdf"])
-        job_description_input = gr.Textbox(label="Job Description", placeholder="Enter the job description here.")
+        with gr.Column():
+             #with gr.Row():
+            cv_input = gr.File(label="Upload your CV", file_types=[".docx", ".pdf"])
+            job_description_input = gr.Textbox(label="Job Description", placeholder="Enter the job description here.")
+            generate_button = gr.Button("Generate Cover Letter")
+        with gr.Column():
+            with gr.Row():
+                undo_button = gr.Button("Undo")
+                redo_button = gr.Button("Redo")
 
-    generate_button = gr.Button("Generate Cover Letter")
-    undo_button = gr.Button("Undo")
-    redo_button = gr.Button("Redo")
+            cover_letter_output = gr.Textbox(label="Generated Cover Letter", lines=25)
 
-    cover_letter_output = gr.Textbox(label="Generated Cover Letter", lines=25)
-
-    history_state = gr.State(value=[])
-    current_index = gr.State(value=-1)
+            history_state = gr.State(value=[])
+            current_index = gr.State(value=-1)
 
     # Event handlers
     generate_button.click(
