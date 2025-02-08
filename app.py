@@ -45,6 +45,15 @@ with gr.Blocks() as demo:
              #with gr.Row():
             cv_input = gr.File(label="Upload your CV", file_types=[".docx", ".pdf"])
             job_description_input = gr.Textbox(label="Job Description", placeholder="Enter the job description here.")
+             # model_choice="deepseek-r1:32b"
+             # model_choice="phi4:14b"
+             # model_choice = "qwen:32b"
+             # model_choice = "llama3.2:3b"
+            dropdown = gr.Dropdown(
+                 choices=["deepseek-r1:32b", "phi4:14b","qwen:32b","llama3.2:3b"],
+                 label="Select Option",
+                 value="deepseek-r1:32b"  # default value
+            )
             generate_button = gr.Button("Generate Cover Letter")
         with gr.Column():
             with gr.Row():
@@ -59,7 +68,7 @@ with gr.Blocks() as demo:
     # Event handlers
     generate_button.click(
         fn=generate_cover_letter,
-        inputs=[cv_input, job_description_input, history_state],
+        inputs=[cv_input, job_description_input, history_state, dropdown],
         outputs=[cover_letter_output, history_state, current_index]
     )
 

@@ -73,7 +73,33 @@ class CoverLetterGenerator:
 
         return raw_text
 
-    def generate_cover_letter(self, cv_path, job_description):
+    def query_llm(self, prompt, model_choice="deepseek-r1:32b"):
+
+        response = ""
+
+        # Build your payload as a Python dictionary
+        payload = {
+            "model": model_choice,
+            "prompt": prompt,
+            "stream": False
+        }
+        json_payload = json.dumps(payload)
+
+        # Send request to Ollama API
+        response = requests.post(
+            'http://localhost:3000/ollama/api/generate',
+            data=json_payload,
+            headers=self.headers
+        )
+
+        response.raise_for_status()
+
+        # Extract the generated text from Ollama's response
+        generated_text = response.json()['response']
+
+        return generated_text
+
+    def generate_cover_letter(self, cv_path, job_description, dropdown):
         """
         Generate cover letter using Ollama via OpenWebUI.
 
@@ -84,16 +110,36 @@ class CoverLetterGenerator:
         Returns:
             str: Generated cover letter text or error message if fails.
         """
-
+        model_choice = dropdown
         try:
+
             # Extract text from CV
             cv_text = self.extract_text(cv_path)
+
+            prompt = f"""
+                Here is a CV I would like to ask for your help with:
+                --------
+                {cv_text}
+                ---------
+                Please interpret this CV and return it. Do not modify the text, just augment the CV making company names more prominent, time periods of each work experience more prominent, and formatting all around more obvious. 
+            """
+            cleaned_prompt = clean_prompt(prompt)
+
+            better_cv = self.query_llm(cleaned_prompt,model_choice=model_choice)
+
+            print(f"""--------------------------------
+                This is a better CV:
+                --------------------
+                {better_cv}
+                -----------------------------""")
+            if len(better_cv)>0:
+                return better_cv
 
             # Create prompt for generating cover letter
             prompt = f"""
                 Write a cover letter based on my CV for the job descriptions below. My CV:
                 --------
-                {cv_text}
+                {better_cv}
                 ---------
                 and the following job description:
                 ---------
@@ -104,38 +150,12 @@ class CoverLetterGenerator:
             """
             cleaned_prompt = clean_prompt(prompt)
 
-            print(cleaned_prompt)
+            # print(cleaned_prompt)
 
             # Append current prompt to conversation history
             self.conversation_history.append(cleaned_prompt)
 
-            # Prepare messages for Ollama API request
-            messages = [{"role": "user", "content": msg} for msg in self.conversation_history]
-
-            # model_choice="deepseek-r1:32b"
-            model_choice="phi4:14b"
-            # model_choice = "qwen:32b"
-
-            response = ""
-
-            # Build your payload as a Python dictionary
-            payload = {
-                "model": model_choice,
-                "prompt": cleaned_prompt,
-                "stream": False
-            }
-            json_payload = json.dumps(payload)
-
-            # Send request to Ollama API
-            response = requests.post(
-                'http://localhost:3000/ollama/api/generate',
-                data=json_payload,
-                headers=self.headers
-            )
-            response.raise_for_status()
-
-            # Extract the generated text from Ollama's response
-            generated_text = response.json()['response']
+            generated_text = self.query_llm(cleaned_prompt,model_choice=model_choice)
 
             # Append the generated text to conversation history for future context
             self.conversation_history.append(generated_text)
@@ -144,8 +164,8 @@ class CoverLetterGenerator:
 
         except requests.exceptions.RequestException as e:
             print(f"Error communicating with Ollama API: {e}")
-            return json_payload
-            # return "Unable to generate cover letter at this time."
+            # return json_payload
+            return "Unable to generate cover letter at this time."
 
     def reset_history(self):
         """
