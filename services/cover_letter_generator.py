@@ -2,6 +2,7 @@
 
 import requests
 from dotenv import load_dotenv
+from huggingface_hub import model_info
 from pdfminer.high_level import extract_text
 import re
 import pdfplumber
@@ -35,8 +36,8 @@ def clean_prompt(prompt: str) -> str:
     cleaned = re.sub(r'[^A-Za-z0-9\s\.\,\:\;\?\'\!\-]', '', prompt)
 
     # Collapse multiple spaces into a single space and trim leading/trailing whitespace
-    cleaned = re.sub(r'[ \t\r\f+]', ' ', cleaned).strip()
-    # cleaned = re.sub(r'\s+', ' ', cleaned).strip()
+    # cleaned = re.sub(r'[ \t\r\f+]', ' ', cleaned).strip()
+    cleaned = re.sub(r'\s+', ' ', cleaned).strip()
     return cleaned
 
 class CoverLetterGenerator:
@@ -85,13 +86,16 @@ class CoverLetterGenerator:
 
             # Create prompt for generating cover letter
             prompt = f"""
-                Write a cover letter based on this CV:
+                Write a cover letter based on my CV for the job descriptions below. My CV:
                 --------
                 {cv_text}
                 ---------
                 and the following job description:
                 ---------
                 {job_description}
+                ---------
+                Please write a cover letter based on my above CV for the above job description. Think about what themes might be relevant and use relevant parts of my CV.
+                Come up with something creative about why I'm interested in the job itself. 
             """
             cleaned_prompt = clean_prompt(prompt)
 
@@ -103,9 +107,12 @@ class CoverLetterGenerator:
             # Prepare messages for Ollama API request
             messages = [{"role": "user", "content": msg} for msg in self.conversation_history]
 
+            model_choice="deepseek-r1:32b"
+            model_choice="phi4:14b"
+
             api_message = f"""
                 {{
-                  "model": "deepseek-r1:32b",
+                  "model": "{model_choice}",
                   "prompt": "{cleaned_prompt}",
                   "stream": false
                 }}
