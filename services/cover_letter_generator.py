@@ -121,7 +121,7 @@ class CoverLetterGenerator:
                 --------
                 {cv_text}
                 ---------
-                Please interpret this CV and return it. Do not modify the text, just augment the CV making company names more prominent, time periods of each work experience more prominent, and formatting all around more obvious. Don't make any comments, just the CV output please. 
+                Please shorten this CV and return it - leave more on more recent experience. Augment the formatting by company names more prominent, time periods of each work experience more prominent, and formatting all around more obvious. Don't make any comments, just the CV output please. 
             """
             cleaned_prompt = clean_prompt(prompt)
 
@@ -133,12 +133,16 @@ class CoverLetterGenerator:
                 {better_cv}
                 -----------------------------""")
 
-            # ---------------------------------------
-            #  -------- DELETE THIS-----------------
-            # ---------------------------------------
+            prompt = f"""
+                Here is a job description I would like to ask for your help with:
+                --------
+                {job_description}
+                ---------
+                Please summarise and shorten this. Don't make any comments, just the output please. 
+            """
+            cleaned_prompt = clean_prompt(prompt)
 
-            # if len(better_cv)>0:
-            #     return better_cv
+            job_description = self.query_llm(cleaned_prompt, model_choice="phi4:14b")
 
             # Create prompt for generating cover letter
             prompt = f"""
