@@ -2,12 +2,11 @@
 
 import requests
 from dotenv import load_dotenv
-from huggingface_hub import model_info
-from pdfminer.high_level import extract_text
 import re
 import pdfplumber
 import os
 import os
+import json
 from docx import Document
 
 load_dotenv()
@@ -33,11 +32,12 @@ def clean_prompt(prompt: str) -> str:
 
     # Remove any characters that are not allowed.
     # Allowed: letters, digits, whitespace, and basic punctuation (. , : ; ? ! ' " -)
-    cleaned = re.sub(r'[^A-Za-z0-9\s\.\,\:\;\?\'\!\-]', '', prompt)
+    # cleaned = re.sub(r'[^A-Za-z0-9\s\.\,\:\;\?\'\!\-]', '', prompt)
+    cleaned = re.sub(r'[^A-Za-z0-9\s\.\,\:\;\?\'\"\!\-]', '', prompt)
 
     # Collapse multiple spaces into a single space and trim leading/trailing whitespace
-    # cleaned = re.sub(r'[ \t\r\f+]', ' ', cleaned).strip()
-    cleaned = re.sub(r'\s+', ' ', cleaned).strip()
+    cleaned = re.sub(r'[ \t\r\f+]', ' ', cleaned).strip()
+    # cleaned = re.sub(r'\s+', ' ', cleaned).strip()
     return cleaned
 
 class CoverLetterGenerator:
@@ -107,22 +107,24 @@ class CoverLetterGenerator:
             # Prepare messages for Ollama API request
             messages = [{"role": "user", "content": msg} for msg in self.conversation_history]
 
-            model_choice="deepseek-r1:32b"
+            # model_choice="deepseek-r1:32b"
             model_choice="phi4:14b"
-
-            api_message = f"""
-                {{
-                  "model": "{model_choice}",
-                  "prompt": "{cleaned_prompt}",
-                  "stream": false
-                }}
-                """
+            # model_choice = "qwen:32b"
 
             response = ""
+
+            # Build your payload as a Python dictionary
+            payload = {
+                "model": model_choice,
+                "prompt": cleaned_prompt,
+                "stream": False
+            }
+            json_payload = json.dumps(payload)
+
             # Send request to Ollama API
             response = requests.post(
                 'http://localhost:3000/ollama/api/generate',
-                data=api_message,
+                data=json_payload,
                 headers=self.headers
             )
             response.raise_for_status()
@@ -137,7 +139,7 @@ class CoverLetterGenerator:
 
         except requests.exceptions.RequestException as e:
             print(f"Error communicating with Ollama API: {e}")
-            return api_message
+            return json_payload
             # return "Unable to generate cover letter at this time."
 
     def reset_history(self):
