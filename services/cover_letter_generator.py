@@ -37,6 +37,11 @@ def clean_prompt(prompt: str) -> str:
 
     # Collapse multiple spaces into a single space and trim leading/trailing whitespace
     cleaned = re.sub(r'[ \t\r\f+]', ' ', cleaned).strip()
+
+    # Optionally remove extra spaces after newline
+    cleaned = re.sub(r'\n\s+', '\n', cleaned).strip()
+
+    # completely remove new lines
     # cleaned = re.sub(r'\s+', ' ', cleaned).strip()
     return cleaned
 
