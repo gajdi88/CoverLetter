@@ -137,7 +137,8 @@ class CoverLetterGenerator:
 
         except requests.exceptions.RequestException as e:
             print(f"Error communicating with Ollama API: {e}")
-            return "Unable to generate cover letter at this time."
+            return api_message
+            # return "Unable to generate cover letter at this time."
 
     def reset_history(self):
         """
