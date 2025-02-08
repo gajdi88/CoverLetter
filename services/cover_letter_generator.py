@@ -121,11 +121,11 @@ class CoverLetterGenerator:
                 --------
                 {cv_text}
                 ---------
-                Please interpret this CV and return it. Do not modify the text, just augment the CV making company names more prominent, time periods of each work experience more prominent, and formatting all around more obvious. 
+                Please interpret this CV and return it. Do not modify the text, just augment the CV making company names more prominent, time periods of each work experience more prominent, and formatting all around more obvious. Don't make any comments, just the CV output please. 
             """
             cleaned_prompt = clean_prompt(prompt)
 
-            better_cv = self.query_llm(cleaned_prompt,model_choice=model_choice)
+            better_cv = self.query_llm(cleaned_prompt,model_choice="phi4:14b")
 
             print(f"""--------------------------------
                 This is a better CV:
@@ -136,9 +136,9 @@ class CoverLetterGenerator:
             # ---------------------------------------
             #  -------- DELETE THIS-----------------
             # ---------------------------------------
-            
-            if len(better_cv)>0:
-                return better_cv
+
+            # if len(better_cv)>0:
+            #     return better_cv
 
             # Create prompt for generating cover letter
             prompt = f"""
