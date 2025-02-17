@@ -1,10 +1,6 @@
-# services/cover_letter_generator.py
-
 import requests
 from dotenv import load_dotenv
 import re
-import pdfplumber
-import os
 import os
 import json
 from docx import Document
@@ -15,69 +11,62 @@ load_dotenv()
 def clean_prompt(prompt: str) -> str:
     """
     Cleans the input prompt by removing special characters that might cause issues in JSON or API requests.
-
     This function:
-      - Replaces newline characters with spaces.
-      - Removes characters that are not alphanumeric, whitespace, or one of: . , : ; ? ! ' " -
-      - Collapses multiple spaces into a single space.
-
-    Args:
-        prompt (str): The original prompt containing special characters.
-
-    Returns:
-        str: A cleaned version of the prompt.
+      - Removes any characters that are not alphanumeric, whitespace, or basic punctuation (. , : ; ? ! ' " -)
+      - Collapses multiple spaces into one.
     """
-    # Replace newline characters with a space
-    # prompt = prompt.replace('\n', ' ')
-
-    # Remove any characters that are not allowed.
-    # Allowed: letters, digits, whitespace, and basic punctuation (. , : ; ? ! ' " -)
-    # cleaned = re.sub(r'[^A-Za-z0-9\s\.\,\:\;\?\'\!\-]', '', prompt)
     cleaned = re.sub(r'[^A-Za-z0-9\s\.\,\:\;\?\'\"\!\-]', '', prompt)
-
-    # Collapse multiple spaces into a single space and trim leading/trailing whitespace
     cleaned = re.sub(r'[ \t\r\f+]', ' ', cleaned).strip()
-
-    # Optionally remove extra spaces after newline
     cleaned = re.sub(r'\n\s+', '\n', cleaned).strip()
-
-    # completely remove new lines
-    # cleaned = re.sub(r'\s+', ' ', cleaned).strip()
     return cleaned
+
 
 class CoverLetterGenerator:
     def __init__(self):
         self.conversation_history = []
         api_key = os.environ.get("API_KEY")
         self.headers = {"Authorization": f"Bearer {api_key}"}
+        # Local endpoint (default provider)
+        self.ollama_url = "http://localhost:3000/ollama/api/generate"
+        # Option for Together.ai hosted models; set via environment variable if needed
+        self.together_url = os.environ.get("TOGETHER_API_URL", "https://api.together.ai/generate")
         print(self.headers)
+
+    def get_model_ids(self):
+        """
+        Fetch available model IDs from the API endpoint.
+        Returns a list of model IDs or a default list if the API call fails.
+        """
+        url = "http://localhost:3000/api/models"
+        try:
+            response = requests.get(url, headers=self.headers)
+            response.raise_for_status()
+            models_data = response.json()["data"]
+            # Extract model IDs from the API response.
+            model_ids = [model["id"] for model in models_data if "id" in model]
+            return model_ids
+        except Exception as e:
+            print(f"Error fetching models: {e}")
+            # Fallback default list.
+            return ["deepseek-r1:32b", "phi4:14b", "qwen:32b", "llama3.2:3b"]
 
     def extract_text(self, cv_path):
         """
-        Extract text from CV file.
-        Implement actual extraction logic here.
+        Extract text from a CV file (DOCX).
         """
-        # Extract raw text from the PDF file
-        # raw_text = extract_text(cv_path)
-
-        # with pdfplumber.open(cv_path) as pdf:
-        #     raw_text = ''
-        #     for page in pdf.pages:
-        #         raw_text += page.extract_text()
-
         doc = Document(cv_path)
-        raw_text = []
-        for para in doc.paragraphs:
-            raw_text.append(para.text)
+        raw_text = [para.text for para in doc.paragraphs]
         return '\n'.join(raw_text)
 
-        return raw_text
+    def query_llm(self, prompt, model_choice, provider="ollama"):
+        """
+        Query the language model API.
 
-    def query_llm(self, prompt, model_choice="deepseek-r1:32b"):
-
-        response = ""
-
-        # Build your payload as a Python dictionary
+        Args:
+            prompt (str): The prompt to send.
+            model_choice (str): The model name (e.g., "deepseek-r1:32b").
+            provider (str): Which provider to use ("ollama" or "together").
+        """
         payload = {
             "model": model_choice,
             "prompt": prompt,
@@ -85,90 +74,85 @@ class CoverLetterGenerator:
         }
         json_payload = json.dumps(payload)
 
-        # Send request to Ollama API
-        response = requests.post(
-            'http://localhost:3000/ollama/api/generate',
-            data=json_payload,
-            headers=self.headers
-        )
+        # Choose the appropriate endpoint based on provider.
+        if provider.lower() == "together":
+            url = self.together_url
+        else:
+            url = self.ollama_url
 
+        response = requests.post(url, data=json_payload, headers=self.headers)
         response.raise_for_status()
-
-        # Extract the generated text from Ollama's response
         generated_text = response.json()['response']
-
         return generated_text
 
-    def generate_cover_letter(self, cv_path, job_description, model_choice):
+    def generate_cover_letter(self, cv_path, job_description, model_choice,
+                              summarise_cv=True, summarise_job=True):
         """
-        Generate cover letter using Ollama via OpenWebUI.
+        Generate a cover letter using the specified model.
 
         Args:
             cv_path (str): Path to the CV file.
-            job_description (str): Job description provided by the user.
+            job_description (str): The job description text.
+            model_choice (str): The model to use (passed from the dropdown).
+            summarise_cv (bool): Whether to summarise/format the CV.
+            summarise_job (bool): Whether to summarise/format the job description.
 
         Returns:
-            str: Generated cover letter text or error message if fails.
+            str: The generated cover letter.
         """
-
         try:
-
-            # Extract text from CV
+            # Extract raw CV text
             cv_text = self.extract_text(cv_path)
 
-            prompt = f"""
+            # Optionally summarise the CV
+            if summarise_cv:
+                prompt_cv = f"""
                 Here is a CV I would like to ask for your help with:
                 --------
                 {cv_text}
                 ---------
-                Please interpret this CV and return it. Do not modify the text, just augment the CV making company names more prominent, time periods of each work experience more prominent, and formatting all around more obvious. 
-            """
-            cleaned_prompt = clean_prompt(prompt)
+                Please shorten this CV and highlight more recent experience. Enhance the formatting by making company names and time periods more prominent.
+                Do not include any extra comments.
+                """
+                cleaned_prompt_cv = clean_prompt(prompt_cv)
+                cv_text = self.query_llm(cleaned_prompt_cv, model_choice)
 
-            better_cv = self.query_llm(cleaned_prompt,model_choice=model_choice)
-
-            print(f"""--------------------------------
-                This is a better CV:
-                --------------------
-                {better_cv}
-                -----------------------------""")
-            if len(better_cv)>0:
-                return better_cv
-
-            # Create prompt for generating cover letter
-            prompt = f"""
-                Write a cover letter based on my CV for the job descriptions below. My CV:
+            # Optionally summarise the job description
+            if summarise_job:
+                prompt_job = f"""
+                Here is a job description:
                 --------
-                {better_cv}
-                ---------
-                and the following job description:
-                ---------
                 {job_description}
                 ---------
-                Please write a cover letter based on my above CV for the above job description. Think about what themes might be relevant and use relevant parts of my CV.
-                Come up with something creative about why I'm interested in the job itself. 
+                Please summarise and shorten it without any comments.
+                """
+                cleaned_prompt_job = clean_prompt(prompt_job)
+                job_description = self.query_llm(cleaned_prompt_job, model_choice)
+
+            # Create the cover letter prompt using the (optionally) processed inputs
+            prompt_cover = f"""
+            Write a cover letter based on the following CV and job description.
+            CV:
+            --------
+            {cv_text}
+            ---------
+            Job Description:
+            ---------
+            {job_description}
+            ---------
+            Please craft a creative cover letter that highlights relevant experience from the CV and demonstrates enthusiasm for the job.
             """
-            cleaned_prompt = clean_prompt(prompt)
-
-            # print(cleaned_prompt)
-
-            # Append current prompt to conversation history
-            self.conversation_history.append(cleaned_prompt)
-
-            generated_text = self.query_llm(cleaned_prompt,model_choice=model_choice)
-
-            # Append the generated text to conversation history for future context
-            self.conversation_history.append(generated_text)
-
-            return generated_text
-
+            cleaned_prompt_cover = clean_prompt(prompt_cover)
+            self.conversation_history.append(cleaned_prompt_cover)
+            cover_letter = self.query_llm(cleaned_prompt_cover, model_choice)
+            self.conversation_history.append(cover_letter)
+            return cover_letter
         except requests.exceptions.RequestException as e:
-            print(f"Error communicating with Ollama API: {e}")
-            # return json_payload
+            print(f"Error communicating with API: {e}")
             return "Unable to generate cover letter at this time."
 
     def reset_history(self):
         """
-        Reset the conversation history for a new session.
+        Reset the conversation history.
         """
         self.conversation_history = []
