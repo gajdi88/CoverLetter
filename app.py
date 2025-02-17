@@ -1,23 +1,20 @@
 import gradio as gr
-import requests
 from services.cover_letter_generator import CoverLetterGenerator
-
-
-
 
 # Initialize the Cover Letter Generator.
 clg = CoverLetterGenerator()
 
-# Get the list of model choices dynamically.
+# Get the list of model choices dynamically (this now includes the Together.ai option).
 model_choices = clg.get_model_ids()
 
-def generate_cover_letter(cv_file, job_description, history_state, dropdown):
+def generate_cover_letter(cv_file, job_description, history_state, dropdown, shorten_prompts):
     if cv_file is None:
         return "Please upload a CV first.", history_state, len(history_state) - 1
 
     try:
         # Pass the selected model (from dropdown) to the cover letter generator.
-        cover_letter = clg.generate_cover_letter(cv_file.name, job_description, dropdown)
+        shorten_prompts_b = True if shorten_prompts == "Yes" else False
+        cover_letter = clg.generate_cover_letter(cv_file.name, job_description, dropdown, summarise_cv_job=shorten_prompts_b)
         new_history = history_state + [cover_letter]
         new_index = len(new_history) - 1
         return cover_letter, new_history, new_index
@@ -50,6 +47,11 @@ with gr.Blocks() as demo:
                 label="Select Model",
                 value=model_choices[0] if model_choices else "deepseek-r1:32b"
             )
+            shorten_prompts = gr.Dropdown(
+                choices=["Yes","No"],
+                label="Should prompts be shortened?",
+                value="No"
+            )
             generate_button = gr.Button("Generate Cover Letter")
         with gr.Column():
             with gr.Row():
@@ -62,7 +64,7 @@ with gr.Blocks() as demo:
     # Event handlers.
     generate_button.click(
         fn=generate_cover_letter,
-        inputs=[cv_input, job_description_input, history_state, dropdown],
+        inputs=[cv_input, job_description_input, history_state, dropdown,shorten_prompts],
         outputs=[cover_letter_output, history_state, current_index]
     )
 
