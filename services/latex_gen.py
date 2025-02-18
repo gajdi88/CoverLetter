@@ -10,19 +10,33 @@ def compile_latex_to_pdf(content, folder="files", tex_filename="cover_letter.tex
     """
     file_path = os.path.join(folder, tex_filename)
 
+    # latex_template = r"""
+    # \documentclass[12pt]{letter}
+    # \usepackage[utf8]{inputenc}
+    # \usepackage{geometry}
+    # \geometry{margin=1in}
+    # \begin{document}
+    # \begin{letter}{Hiring Manager \\ Company Name \\ Company Address}
+    # \opening{Dear Hiring Manager,}
+    # %s
+    # \closing{Warm regards,\\ xxxx}
+    # \end{letter}
+    # \end{document}
+    # """
+
     latex_template = r"""
     \documentclass[12pt]{letter}
     \usepackage[utf8]{inputenc}
     \usepackage{geometry}
     \geometry{margin=1in}
     \begin{document}
-    \begin{letter}{Hiring Manager \\ Company Name \\ Company Address}
-    \opening{Dear Hiring Manager,}
+    \begin{letter}
     %s
-    \closing{Warm regards,\\ xxxx}
     \end{letter}
     \end{document}
     """
+
+
     # Escape special characters as needed
     tex_content = latex_template % content.replace('&', r'\&')
     with open(file_path, "w") as f:
