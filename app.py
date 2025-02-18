@@ -1,5 +1,6 @@
 import gradio as gr
 from services.cover_letter_generator import CoverLetterGenerator
+from services.latex_gen import preview_cover_letter
 
 # Initialize the Cover Letter Generator.
 clg = CoverLetterGenerator()
@@ -58,6 +59,11 @@ with gr.Blocks() as demo:
                 undo_button = gr.Button("Undo")
                 redo_button = gr.Button("Redo")
             cover_letter_output = gr.Textbox(label="Generated Cover Letter", lines=25)
+            preview_button = gr.Button("Generate PDF")
+            preview_output = gr.Image(label="LaTeX PDF Preview")
+
+            preview_button.click(fn=preview_cover_letter, inputs=cover_letter_output, outputs=preview_output)
+
             history_state = gr.State(value=[])
             current_index = gr.State(value=-1)
 
