@@ -100,6 +100,10 @@ class CoverLetterGenerator:
             payload = {
                 "model": model_choice,
                 "prompt": prompt,
+                "options":
+                    {
+                        "num_ctx": 10000
+                    },
                 "stream": False
             }
             json_payload = json.dumps(payload)
